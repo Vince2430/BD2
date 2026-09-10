@@ -1,9 +1,23 @@
 """
-Script pour générer et insérer plusieurs documents 'emprunt' d'un coup
-dans la table document (JSONB).
+script_insertion_donnee_JSONB.py
+
+Génère et insère les documents JSONB de la bibliothèque, conformément
+à la nouvelle structure de creer_bd_jsonb.py / document_jsonb.sql :
+
+    - un document 'livre' par livre  (auteur imbriqué + tableau
+      "emprunts" -- vide si le livre n'a jamais été emprunté)
+    - un document 'membre' par membre (tableau "emprunts_actifs"
+      -- vide si le membre n'a aucun emprunt en cours)
+
+La contrainte type_document_valide n'accepte que 'livre' et 'membre',
+donc il n'y a plus de document de type 'emprunt' séparé : les
+emprunts vivent uniquement à l'intérieur du livre/membre concerné.
 
 Installation requise :
     pip install psycopg2-binary
+
+Usage :
+    python script_insertion_donnee_JSONB.py
 """
 
 import psycopg2
@@ -13,17 +27,18 @@ import itertools
 from datetime import date, timedelta
 
 # ============================================================
-# Paramètres de connexion — à adapter selon ta base
+# Paramètres de connexion
 # ============================================================
-CONNEXION = {
-    "host": "localhost",
-    "dbname": "atelier1_bibliotheque_jsonb",
-    "user": "postgres",
-    "password": "Gu3pard1",
-    "port": 5432,
-}
+# Aucun mot de passe dans ce fichier : les valeurs viennent des
+# variables d'environnement ou de Remise_Atelier1/.env
+# (voir config_bd.py et .env.example).
+import config_bd
 
-NB_A_INSERER = 800000  # <-- change ce nombre selon combien de documents tu veux générer
+CONNEXION = config_bd.PARAMS_JSONB
+
+# Nombre total d'évènements d'emprunt à générer et à répartir
+# entre les livres et les membres (change ce nombre au besoin)
+NB_EMPRUNTS = 200
 
 # ============================================================
 # LIVRES : une vraie liste de 25 titres/auteurs pour varier
@@ -91,37 +106,90 @@ def generer_membres(nb):
 MEMBRES = generer_membres(NB_MEMBRES)
 
 
-def generer_emprunt():
-    """Construit un seul document 'emprunt' aléatoire, cohérent avec
-    la structure qu'on a définie (livre + auteur imbriqués, membre imbriqué)."""
-    livre = random.choice(LIVRES)
-    membre = random.choice(MEMBRES)
+def generer_evenements_emprunt(nb):
+    """Génère `nb` évènements d'emprunt (un livre + un membre + des
+    dates), répartis aléatoirement. Ce sont ces évènements qui seront
+    ensuite regroupés dans les documents 'livre' et 'membre'."""
+    evenements = []
+    for _ in range(nb):
+        livre = random.choice(LIVRES)
+        membre = random.choice(MEMBRES)
 
-    date_emprunt = date.today() - timedelta(days=random.randint(1, 180))
+        date_emprunt = date.today() - timedelta(days=random.randint(1, 180))
 
-    # 30% de chance que l'emprunt soit encore actif (pas encore retourné)
-    if random.random() < 0.3:
-        date_retour = None
-    else:
-        date_retour = date_emprunt + timedelta(days=random.randint(1, 30))
+        # 30% de chance que l'emprunt soit encore actif (pas encore retourné)
+        if random.random() < 0.3:
+            date_retour = None
+        else:
+            date_retour = date_emprunt + timedelta(days=random.randint(1, 30))
 
+        evenements.append({
+            "id_livre": livre["id_livre"],
+            "titre_livre": livre["titre"],
+            "id_membre": membre["id_membre"],
+            "nom_membre": membre["nom"],
+            "date_emprunt": date_emprunt.isoformat(),
+            "date_retour": date_retour.isoformat() if date_retour else None,
+        })
+    return evenements
+
+
+def construire_document_livre(livre, evenements):
+    """Construit le document JSONB d'un livre : son auteur imbriqué
+    et TOUS ses évènements d'emprunt (tableau vide si le livre n'a
+    jamais été emprunté -- c'est maintenant permis)."""
+    emprunts = [
+        {
+            "id_membre": e["id_membre"],
+            "nom_membre": e["nom_membre"],
+            "date_emprunt": e["date_emprunt"],
+            "date_retour": e["date_retour"],
+        }
+        for e in evenements
+        if e["id_livre"] == livre["id_livre"]
+    ]
     return {
-        "livre": livre,
-        "membre": membre,
-        "date_emprunt": date_emprunt.isoformat(),
-        "date_retour": date_retour.isoformat() if date_retour else None,
+        "titre": livre["titre"],
+        "auteur": livre["auteur"],
+        "emprunts": emprunts,
     }
 
 
-def inserer_emprunts(nb):
-    """Génère `nb` documents et les insère tous d'un coup dans la table document."""
+def construire_document_membre(membre, evenements):
+    """Construit le document JSONB d'un membre : seulement ses
+    emprunts encore actifs, c.-à-d. sans date de retour (tableau
+    vide si le membre n'a rien en cours -- c'est maintenant permis)."""
+    emprunts_actifs = [
+        {
+            "titre_livre": e["titre_livre"],
+            "date_emprunt": e["date_emprunt"],
+        }
+        for e in evenements
+        if e["id_membre"] == membre["id_membre"] and e["date_retour"] is None
+    ]
+    return {
+        "nom": membre["nom"],
+        "emprunts_actifs": emprunts_actifs,
+    }
+
+
+def inserer_documents():
+    """Génère les évènements d'emprunt, construit un document par
+    livre et un document par membre, puis insère le tout d'un coup
+    dans la table document (type_document valant 'livre' ou 'membre')."""
     conn = psycopg2.connect(**CONNEXION)
     cur = conn.cursor()
 
-    documents = [generer_emprunt() for _ in range(nb)]
+    evenements = generer_evenements_emprunt(NB_EMPRUNTS)
+
+    documents = []
+    for livre in LIVRES:
+        documents.append(("livre", construire_document_livre(livre, evenements)))
+    for membre in MEMBRES:
+        documents.append(("membre", construire_document_membre(membre, evenements)))
 
     requete = "INSERT INTO document (type_document, donnees) VALUES (%s, %s)"
-    valeurs = [("emprunt", json.dumps(doc)) for doc in documents]
+    valeurs = [(type_doc, json.dumps(doc)) for type_doc, doc in documents]
 
     cur.executemany(requete, valeurs)
 
@@ -129,9 +197,10 @@ def inserer_emprunts(nb):
     cur.close()
     conn.close()
 
-    print(f"{nb} documents 'emprunt' insérés avec succès.")
-    print(f"({len(LIVRES)} livres et {len(MEMBRES)} membres uniques utilisés pour varier les combinaisons)")
+    print(f"{len(LIVRES)} documents 'livre' insérés ({len(LIVRES)} livres au total, empruntés ou non).")
+    print(f"{len(MEMBRES)} documents 'membre' insérés ({len(MEMBRES)} membres au total, actifs ou non).")
+    print(f"({NB_EMPRUNTS} évènements d'emprunt générés et répartis dans les tableaux imbriqués.)")
 
 
 if __name__ == "__main__":
-    inserer_emprunts(NB_A_INSERER)
+    inserer_documents()

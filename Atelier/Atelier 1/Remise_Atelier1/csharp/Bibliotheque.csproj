@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- .NET SDK 10 LTS, comme demandé dans l'atelier -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Bibliotheque</RootNamespace>
+    <AssemblyName>Bibliotheque</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pilote PostgreSQL pour .NET.
+         9.0.* = la dernière version corrective de la branche 9.0.
+         Pour forcer la toute dernière version : dotnet add package Npgsql -->
+    <PackageReference Include="Npgsql" Version="9.0.*" />
+  </ItemGroup>
+
+</Project>

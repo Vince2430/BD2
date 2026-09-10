@@ -7,8 +7,8 @@
 -- un index, parce que lire directement les quelques lignes est
 -- plus rapide que de consulter l'index. Pour voir clairement la
 -- différence, insère d'abord un grand nombre de documents (par
--- exemple avec le script Python generer_emprunts.py, en mettant
--- NB_A_INSERER = 2000 ou plus) avant de faire ce test.
+-- exemple avec le script Python script_insertion_donnee_JSONB.py, en mettant
+-- NB_EMPRUNTS = 2000 ou plus) avant de faire ce test.
 
 
 -- ============================================================
@@ -29,7 +29,7 @@ DROP INDEX IF EXISTS idx_document_donnees;
 EXPLAIN ANALYZE
 SELECT *
 FROM document
-WHERE donnees @> '{"membre": {"nom": "Julie Bouchard"}}';
+WHERE donnees @> '{"auteur": {"nom": "Antoine de Saint-Exupéry"}}';
 
 -- Résultat attendu : "Seq Scan on document" -- PostgreSQL doit
 -- lire et décortiquer CHAQUE ligne une par une pour vérifier
@@ -45,7 +45,7 @@ CREATE INDEX idx_document_donnees ON document USING GIN (donnees);
 EXPLAIN ANALYZE
 SELECT *
 FROM document
-WHERE donnees @> '{"membre": {"nom": "Julie Bouchard"}}';
+WHERE donnees @> '{"auteur": {"nom": "Antoine de Saint-Exupéry"}}';
 
 -- Résultat attendu : "Bitmap Heap Scan on document" avec, en
 -- dessous, "Bitmap Index Scan on idx_document_donnees" -- signe
@@ -62,7 +62,7 @@ SET enable_seqscan = off;
 EXPLAIN ANALYZE
 SELECT *
 FROM document
-WHERE donnees @> '{"membre": {"nom": "Julie Bouchard"}}';
+WHERE donnees @> '{"auteur": {"nom": "Antoine de Saint-Exupéry"}}';
 
 SET enable_seqscan = on;  -- remettre le comportement normal après le test
 

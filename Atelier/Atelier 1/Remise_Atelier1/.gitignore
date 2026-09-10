@@ -1,0 +1,16 @@
+# Le fichier de configuration réel contient le mot de passe :
+# il ne doit jamais être versionné ni remis.
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# C# / .NET
+bin/
+obj/
+
+# macOS
+.DS_Store

@@ -1,5 +1,5 @@
 """
-insert_fake_data.py
+script_insertion_donnee_SQL.py
 
 Insert fake/random data into the bibliotheque database:
     auteur -> livre -> membre -> emprunt
@@ -13,7 +13,7 @@ Requirements:
     pip install psycopg2-binary faker
 
 Usage:
-    python insert_fake_data.py
+    python script_insertion_donnee_SQL.py
 """
 
 import random
@@ -25,17 +25,15 @@ from faker import Faker
 
 fake = Faker("fr_FR")  # French names/locale — change if you prefer another
 
-# ─────────────────────────────────────────────────────────────
-# CONFIG — edit connection info and row counts here
-# ─────────────────────────────────────────────────────────────
+# ============================================================
+# Paramètres de connexion
+# ============================================================
+# Aucun mot de passe dans ce fichier : les valeurs viennent des
+# variables d'environnement ou de Remise_Atelier1/.env
+# (voir config_bd.py et .env.example).
+import config_bd
 
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "dbname": "atelier_bibliotheque_sql",
-    "user": "postgres",
-    "password": "Gu3pard1",
-}
+DB_CONFIG = config_bd.PARAMS_SQL
 
 NUM_AUTEURS = 20
 NUM_LIVRES = 50

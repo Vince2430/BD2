@@ -1,0 +1,7 @@
+# Pilote PostgreSQL officiel, version 3 (module « psycopg »).
+# [binary] installe la version précompilée : pas besoin de compiler
+# libpq soi-même sur macOS.
+psycopg[binary]>=3.2
+
+# Lecture du fichier .env (paramètres de connexion hors du code).
+python-dotenv>=1.0
