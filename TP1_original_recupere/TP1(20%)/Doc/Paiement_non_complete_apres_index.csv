@@ -1,0 +1,8 @@
+"QUERY PLAN"
+"Index Scan using idx_paiement_incomplet on paiement p  (cost=0.28..92.91 rows=2242 width=28) (actual time=0.372..6.059 rows=2298.00 loops=1)"
+"  Index Searches: 1"
+"  Buffers: shared hit=410 read=8"
+"Planning:"
+"  Buffers: shared hit=15 read=1"
+"Planning Time: 1.355 ms"
+"Execution Time: 6.283 ms"

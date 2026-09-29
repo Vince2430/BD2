@@ -1,0 +1,6 @@
+# Fichiers generes par dotnet : jamais dans la remise
+bin/
+obj/
+# Secrets locaux
+.env
+*.user
